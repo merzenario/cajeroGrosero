@@ -13,7 +13,7 @@ import com.bancocpm.atm.services.CuentaService;
 import com.bancocpm.atm.services.MovimientoService;
 import com.bancocpm.atm.services.RetiroService;
 
-import ch.qos.logback.core.model.Model;
+import org.springframework.ui.Model;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 
@@ -28,14 +28,14 @@ public class CajeroController {
     private final RetiroService retiroService;
 
     @GetMapping
-    public String loginForm(){
+    public String loginForm() {
         return "cajero/login";
     }
 
     @PostMapping("/login")
     public String login(@RequestParam String numeroCuenta,
-    @RequestParam String pin,HttpSession session, 
-    Model model) {
+            @RequestParam String pin, HttpSession session,
+            Model model) {
         var cuenta = cuentaService.buscarPorNumero(numeroCuenta);
         if (cuenta.isEmpty()) {
             model.addAttribute("error", "Cuenta no se encuentra o Inexistente");
@@ -44,18 +44,18 @@ public class CajeroController {
 
         Cliente cliente = cuenta.get().getCliente();
 
-        if(cliente.isBloqueado()){
+        if (cliente.isBloqueado()) {
             model.addAttribute("error", "Cuenta Bloqueada");
             return "cajero/login";
         }
 
         if (!cliente.getPin().equals(pin)) {
             clienteService.incrementarIntento(cliente);
-            if (cliente.getIntentos()>= 3) {
+            if (cliente.getIntentos() >= 3) {
                 clienteService.bloquearCliente(cliente);
                 model.addAttribute("error", "Cuenta Bloqueada por intentos fallidos");
 
-            }else{
+            } else {
                 model.addAttribute("error", "Pin Incorrecto");
             }
             return "cajero/login";

@@ -62,7 +62,7 @@ public class ClienteService {
         clienteRepository.save(cliente);
     }
 
-    public static void reiniciarIntentos(Cliente cliente) {
+    public void reiniciarIntentos(Cliente cliente) {
         cliente.setIntentos(0);
         clienteRepository.save(cliente);
     }

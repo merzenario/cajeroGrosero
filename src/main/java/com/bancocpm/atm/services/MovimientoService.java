@@ -15,7 +15,7 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class MovimientoServices {
+public class MovimientoService {
     
         private final MovimientoRepository movimientoRepository;
         private final CuentaRepository cuentaRepository;

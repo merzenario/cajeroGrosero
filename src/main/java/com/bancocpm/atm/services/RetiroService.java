@@ -11,11 +11,11 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class RetiroServices {
+public class RetiroService {
 
     private final CuentaRepository cuentaRepository;
     private final ClienteRepository clienteRepository;
-    private final MovimientoServices movimientoServices;
+    private final MovimientoService movimientoServices;
 
     public String realizarRetiro(String identificacion, String numeroCuenta, double monto){
         Cliente cliente = clienteRepository.findByIdentificacion(identificacion)

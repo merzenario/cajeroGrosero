@@ -1,18 +1,21 @@
 package com.bancocpm.atm.services;
 
 import java.util.Optional;
+
 import org.springframework.stereotype.Service;
+
 import com.bancocpm.atm.entity.Cliente;
 import com.bancocpm.atm.repository.ClienteRepository;
+
 import lombok.RequiredArgsConstructor;
- 
+
 @Service
 @RequiredArgsConstructor
 public class ClienteService {
-    
+
     private final ClienteRepository clienteRepository;
 
-    public Cliente crearCliente (Cliente cliente) {
+    public Cliente crearCliente(Cliente cliente) {
         cliente.setBloqueado(false);
         cliente.setIntentosFallidos(0);
         return clienteRepository.save(cliente);
@@ -23,27 +26,28 @@ public class ClienteService {
     }
 
     public boolean validarPin(Cliente cliente, String pin) {
-        if(cliente.isBloqueado()) return false;
+        if (cliente.isBloqueado())
+            return false;
 
         if (cliente.getPin().equals(pin)) {
             cliente.setIntentosFallidos(0);
             clienteRepository.save(cliente);
-            return true;            
+            return true;
         } else {
             int intentos = cliente.getIntentosFallidos() + 1;
             cliente.setIntentosFallidos(intentos);
-            if(intentos >= 3) {
+            if (intentos >= 3) {
                 cliente.setBloqueado(true);
             }
             clienteRepository.save(cliente);
             return false;
-            
+
         }
     }
 
-    public void desbloquearCliente(String identificacion, String nuevoPin){
+    public void desbloquearCliente(String identificacion, String nuevoPin) {
         Optional<Cliente> optionalCliente = clienteRepository.findByIdentificacion(identificacion);
-        if(optionalCliente.isPresent()){
+        if (optionalCliente.isPresent()) {
             Cliente cliente = optionalCliente.get();
             cliente.setBloqueado(false);
             cliente.setIntentosFallidos(0);

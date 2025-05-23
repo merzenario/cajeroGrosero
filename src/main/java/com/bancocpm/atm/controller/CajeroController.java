@@ -1,6 +1,7 @@
 package com.bancocpm.atm.controller;
 
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -13,7 +14,6 @@ import com.bancocpm.atm.services.CuentaService;
 import com.bancocpm.atm.services.MovimientoService;
 import com.bancocpm.atm.services.RetiroService;
 
-import org.springframework.ui.Model;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 
@@ -61,7 +61,7 @@ public class CajeroController {
             return "cajero/login";
         }
 
-        ClienteService.reiniciarIntentos(cliente);
+        clienteService.reiniciarIntentos(cliente);
         session.setAttribute("cliente", cliente);
         return "redirect:/cajero/menu";
     }

@@ -1,5 +1,7 @@
 package com.bancocpm.atm.controller;
 
+import java.util.Map;
+
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -7,8 +9,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import com.bancocpm.atm.dto.TransferenciaForm;
 import com.bancocpm.atm.entity.Cliente;
+import com.bancocpm.atm.entity.Cuenta;
 import com.bancocpm.atm.repository.CuentaRepository;
 import com.bancocpm.atm.services.ClienteService;
 import com.bancocpm.atm.services.CuentaService;
@@ -33,19 +39,21 @@ public class CajeroController {
         return "cajero/login";
     }
 
-    // iniciar sesión
     @PostMapping("/login")
-    public String login(@RequestParam String numeroCuenta, @RequestParam String pin, HttpSession session, Model model) {
+    public String login(@RequestParam String numeroCuenta,
+            @RequestParam String pin,
+            HttpSession session,
+            Model model) {
         var cuenta = cuentaService.buscarPorNumero(numeroCuenta);
         if (cuenta.isEmpty()) {
-            model.addAttribute("error", "Cuenta no se encuentra o Inexistente");
+            model.addAttribute("error", "Cuenta no encontrada.");
             return "cajero/login";
         }
 
         Cliente cliente = cuenta.get().getCliente();
 
         if (cliente.isBloqueado()) {
-            model.addAttribute("error", "Cuenta Bloqueada");
+            model.addAttribute("error", "Cuenta bloqueada.");
             return "cajero/login";
         }
 
@@ -53,10 +61,9 @@ public class CajeroController {
             clienteService.incrementarIntento(cliente);
             if (cliente.getIntentos() >= 3) {
                 clienteService.bloquearCliente(cliente);
-                model.addAttribute("error", "Cuenta Bloqueada por intentos fallidos");
-
+                model.addAttribute("error", "Cuenta bloqueada por intentos fallidos.");
             } else {
-                model.addAttribute("error", "Pin Incorrecto");
+                model.addAttribute("error", "PIN incorrecto.");
             }
             return "cajero/login";
         }
@@ -77,30 +84,29 @@ public class CajeroController {
         return "cajero/menu";
     }
 
-    @GetMapping("/cosultas")
+    @GetMapping("/consultas")
     public String consultas(Model model, HttpSession session) {
-        Cliente cliente = (Cliente) session.getAttribute(name = "cliente");
+        Cliente cliente = (Cliente) session.getAttribute("cliente");
         model.addAttribute("cuentas", cuentaService.buscarPorCliente(cliente));
         return "cajero/consultas";
     }
 
-    @GetMapping("/movimientos/(numero)")
+    @GetMapping("/movimientos/{numero}")
     public String movimientos(@PathVariable String numero, Model model, HttpSession session) {
-        Cliente cliengte = (Cliente) session.getAttribute("cliente");
+        Cliente cliente = (Cliente) session.getAttribute("cliente");
         if (cliente == null)
             return "redirect:/cajero";
 
         try {
-            var moviemiento = movimientoService.buscarPorCuenta(numero);
-            model.addAttribute("movimientos", moviemiento);
+            var movimientos = movimientoService.buscarPorCuenta(numero);
+            model.addAttribute("movimientos", movimientos);
             return "cajero/movimientos";
         } catch (Exception e) {
-            model.addAttribute("error", "No es posible obtener los movimientos" + e.getMessage());
+            model.addAttribute("error", "No fue posible obtener los movimientos: " + e.getMessage());
             return "cajero/consultas";
         }
     }
 
-    // cerrar sesión
     @GetMapping("/logout")
     public String logout(HttpSession session) {
         session.invalidate();
@@ -115,20 +121,21 @@ public class CajeroController {
     }
 
     @PostMapping("/retiro")
-    public String realizarRetiro(@RequestParam String identificacion, @RequestParam String numeroCuenta,
+    public String realizarRetiro(@RequestParam String identificacion,
+            @RequestParam String numeroCuenta,
             @RequestParam double monto, RedirectAttributes redirectAttributes) {
         try {
             String resultado = retiroService.realizarRetiro(identificacion, numeroCuenta, monto);
-            redirectAttributes.addFlashAttribute("mensaje", "Retiro realizado con éxito: ");
+            redirectAttributes.addFlashAttribute("mensaje", "Retiro exitoso");
             return resultado;
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "Error al realizar el retiro: " + e.getMessage());
+        } catch (RuntimeException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
             return "redirect:/cajero/retiro";
         }
     }
 
-    @GetMapping("/consiganr")
-    public String mostrarFormularioConsignacion(Model model, HttpSession session) {
+    @GetMapping("/consignar")
+    public String mostrarFormularioConsignacion(HttpSession session, Model model) {
         Cliente cliente = (Cliente) session.getAttribute("cliente");
         if (cliente == null) {
             return "redirect:/cajero";
@@ -136,8 +143,10 @@ public class CajeroController {
         return "cajero/consignar";
     }
 
-   @PostMapping("/consignar")
-    public String consignar(@RequestParam String numeroCuenta, @RequestParam double monto,Model model) {
+    @PostMapping("/consignar")
+    public String consignar(@RequestParam String numeroCuenta,
+            @RequestParam double monto,
+            Model model) {
         try {
             Cuenta cuenta = cuentaRepository.findByNumero(numeroCuenta)
                     .orElseThrow(() -> new RuntimeException("Cuenta no encontrada"));
@@ -150,3 +159,82 @@ public class CajeroController {
 
         return "cajero/consignar";
     }
+
+    @GetMapping("/transferir")
+    public String mostrarFormularioTransferencia(Model model) {
+        model.addAttribute("transferenciaForm", new TransferenciaForm());
+        return "cajero/transferir";
+    }
+
+    @PostMapping("/transferir")
+    public String transferir(@RequestParam String numeroCuentaDestino,
+            @RequestParam double monto,
+            HttpSession session,
+            Model model) {
+        Cliente cliente = (Cliente) session.getAttribute("cliente");
+        if (cliente == null)
+            return "redirect:/cajero";
+
+        Cuenta origen = cuentaService.buscarPorCliente(cliente)
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("No se encontró cuenta origen"));
+
+        try {
+            Cuenta destino = cuentaService.buscarPorNumero(numeroCuentaDestino)
+                    .orElseThrow(() -> new RuntimeException("Cuenta destino no encontrada"));
+
+            if (movimientoService.realizarTransferencia(origen, destino, monto)) {
+                model.addAttribute("mensaje", "Transferencia realizada con éxito");
+            } else {
+                model.addAttribute("error", "Saldo insuficiente para realizar la transferencia");
+            }
+        } catch (Exception e) {
+            model.addAttribute("error", "Error: " + e.getMessage());
+        }
+
+        return "cajero/transferir";
+    }
+
+    @GetMapping("/titular")
+    @ResponseBody
+    public Map<String, String> obtenerTitular(@RequestParam String numero) {
+        return cuentaService.buscarPorNumero(numero)
+                .map(cuenta -> Map.of("nombre", cuenta.getCliente().getNombreCompleto()))
+                .orElse(Map.of());
+    }
+
+    @GetMapping("/cambiar-clave")
+    public String mostrarFormularioCambioClave() {
+        return "cajero/cambiar-clave";
+    }
+
+    @PostMapping("/cambiar-clave")
+    public String cambiarClave(@RequestParam String claveActual,
+            @RequestParam String nuevaClave, @RequestParam String confirmarClave,
+            HttpSession session, Model model) {
+        Cliente cliente = (Cliente) session.getAttribute("cliente");
+        if (cliente == null) {
+            return "redirect:/cajero";
+        }
+        //
+        if (!cliente.getPin().equals(claveActual)) {
+            model.addAttribute("error", "Clave actual incorrecta.");
+            return "cajero/cambiar-clave";
+        }
+        //
+        if (!nuevaClave.equals(confirmarClave)) {
+            model.addAttribute("error", "Las nuevas claves no coinciden.");
+            return "cajero/cambiar-clave";
+        }
+        //
+        clienteService.cambiarPin(cliente, nuevaClave);
+
+        session.setAttribute("cliente", cliente);
+
+        model.addAttribute("mensaje", "Clave cambiada exitosamente.");
+        return "cajero/cambiar-clave";
+
+    }
+
+}

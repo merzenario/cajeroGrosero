@@ -4,7 +4,7 @@
 <head>
     <title>Menú Cajero</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" th:href="@{/styles/menu.css}">
+    <link rel="stylesheet" href="/src/main/resources/static/styles/menu.css">
 </head>
 
 <body>
@@ -29,15 +29,6 @@
         <a th:href="@{/cajero/consultas}" class="menu-item">
             <i class="fas fa-search-dollar"></i> CONSULTAS
         </a>
-        <!-- <a th:href="@{/cajero/menu}" class="menu-item">
-            <i class="fas fa-cog"></i> SETTING
-        </a>
-        <a th:href="@{/cajero/menu}" class="menu-item">
-            <i class="fas fa-file-invoice-dollar"></i> BILL PAYMENT
-        </a>
-        <a th:href="@{/cajero/menu}" class="menu-item">
-            <i class="fas fa-hand-holding-heart"></i> DONATION/OTHER
-        </a> -->
     </div>
 
     <a th:href="@{/cajero/logout}" class="logout-btn">Cerrar sesión</a>
